@@ -3,15 +3,10 @@ mod geometry;
 
 #[tokio::main]
 async fn main() {
-    use mylog::{logs, error};
     use extract;
+    use mylog::{error, logs};
 
-    if let Err(error) = logs::init(
-        "logs".to_string(),
-        "1MB".to_string(),
-        "7days".to_string()
-    )
-    {
+    if let Err(error) = logs::init("logs".to_string(), "1MB".to_string(), "7days".to_string()) {
         panic!("{}", error)
     }
 
