@@ -1,4 +1,5 @@
 mod extract;
+mod geometry;
 
 #[tokio::main]
 async fn main() {

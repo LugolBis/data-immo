@@ -8,6 +8,8 @@ use serde_json::{Map, Value};
 use tokio::time::{sleep, Duration};
 use mylog::{error, info};
 
+use crate::geometry::split_geometry;
+
 const FILTERS: [(&str, &str);3] = [
     ("valeurfonc[lte]", "100000000000000000"),
     ("datemut[lt]", "2025-08-15"),
@@ -81,14 +83,17 @@ fn get_department(file_path: PathBuf) -> Result<Value, ()> {
 }
 
 async fn save_mutation_feature(feature_id: &str, api_key: &str, headers: &HeaderMap, data: Map<String, Value>) -> Result<(), ()> {
-    let mut error_occured = false;
+    let mut success_count = 0usize;
+    let mut failed_retry= false;
+    let mut buffer: Vec<Map<String, Value>> = Vec::new();
+    buffer.push(data);
 
-    loop {
+    while buffer.len() > 0 {
         let api_response = api_post(
-            "mutation/search", api_key, headers.clone(), &data, &FILTERS
+            "mutation/search", api_key, headers.clone(), &buffer.last(), &FILTERS
         ).await;
 
-        match (api_response, error_occured) {
+        match (api_response, failed_retry) {
             (Ok(response), _) => {
                 let path = PathBuf::from(TARGET_FOLDER)
                     .join(format!("{}.json", feature_id));
@@ -102,21 +107,58 @@ async fn save_mutation_feature(feature_id: &str, api_key: &str, headers: &Header
 
                 file.write_all(content.as_bytes())
                     .map_err(|e| error!("Failed to write the content : {}", e))?;
-                return Ok(());
+
+                let _ = buffer.pop();
+                success_count += 1;
             },
             (Err(message), true) => {
-                error!("{}", message);
-                return Err(());
+                error!("{} - {}", feature_id, message);
+                let _ = buffer.pop();
+                failed_retry = false;
             },
             (Err(message), false) => {
-                error!("{}", message);
-                if !message.contains("402") && !message.contains("501") {
-                    return Err(());
+                error!("{} - {}", feature_id, message);
+                if message.contains("402") || message.contains("501") {
+                    let _ = sleep(Duration::from_secs(60));
                 }
-                error_occured = true;
-                let _ = sleep(Duration::from_secs(60));
+                else if message
+                    .contains(r##"403\s*:\s*\{"message":"Surface\s+(.*?)\s+du\s+GeoJSON\s+trop\s+grande"\}"##) 
+                {
+                    info!("Detected Surface too large.");
+                    let geometry = &buffer.last().unwrap()
+                        .get("geometry")
+                        .ok_or(error!("Inconsistant data format whith noe 'geometry' key : {:?}", buffer.last()))?;
+                    
+                    match split_geometry(geometry) {
+                        Ok((geometry1, geometry2)) => {
+                            let _ = buffer.pop();
+
+                            let mut data1 = Map::new();
+                            data1.insert("geojson".to_string(), geometry1);
+
+                            let mut data2 = Map::new();
+                            data2.insert("geojson".to_string(), geometry2);
+
+                            buffer.push(data1);
+                            buffer.push(data2);
+                        }
+                        Err(message) => {
+                            error!(message);
+                        }
+                    }
+                }
+                else {
+                    let _ = buffer.pop();
+                }
             }
         }
+    }
+
+    if success_count > 0 {
+        Ok(())
+    }
+    else {
+        Err(())
     }
 }
 
