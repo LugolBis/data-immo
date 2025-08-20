@@ -6,6 +6,7 @@ logs
 tests
 data
 .env
+*.csv
 
 **/*.rs.bk
 

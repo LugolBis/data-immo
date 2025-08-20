@@ -8,7 +8,7 @@ use serde::Serialize;
 use serde_json::{self, Map, Value};
 
 use crate::extract::TARGET_FOLDER;
-use tables::{Classes, Mutation, SharedMutationProps, HEADERS_MUTATION, HEADERS_CLASSES};
+use tables::{Classes, Mutation, SharedMutationProps};
 
 fn map_parcelles(
     parcelles: Vec<Map<String, Value>>,
@@ -191,15 +191,10 @@ fn map_properties(
 
 fn save_transformations(
     path: PathBuf,
-    headers: Vec<&str>,
     records: Vec<(impl Serialize + std::fmt::Debug)>,
 ) -> Result<(), ()> {
     let mut writer =
-        Writer::from_path("output.csv").map_err(|e| error!("File path '{:?}' : {}", path, e))?;
-
-    writer
-        .write_record(&headers)
-        .map_err(|e| error!("Failed to write the headers {:?} : {}", headers, e))?;
+        Writer::from_path(&path).map_err(|e| error!("File path '{:?}' : {}", path, e))?;
 
     for record in &records {
         writer
@@ -268,7 +263,7 @@ pub fn transform_api_data(data: String, id_generated: String) -> Result<(), ()> 
     let mutations_path = folder_path.join(format!("mutations_{}.csv", id_generated));
     let classes_path = folder_path.join(format!("classes_{}.csv", id_generated));
 
-    save_transformations(mutations_path, HEADERS_MUTATION.to_vec(), mutations)?;
-    save_transformations(classes_path, HEADERS_CLASSES.to_vec(), classes)?;
+    save_transformations(mutations_path, mutations)?;
+    save_transformations(classes_path, classes)?;
     Ok(())
 }

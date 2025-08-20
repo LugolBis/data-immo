@@ -2,36 +2,13 @@ use mylog::error;
 use serde::Serialize;
 use serde_json::{self, Map, Value};
 
-pub const HEADERS_MUTATION: [&str; 16] = [
-    "id",
-    "idpar",
-    "idmutation",
-    "vefa",
-    "typologie",
-    "datemut",
-    "nature",
-    "btq",
-    "voie",
-    "novoie",
-    "codvoie",
-    "commune",
-    "typvoie",
-    "codepostal",
-    "valeur_fonciere",
-    "vendu",
-];
-
-pub const HEADERS_CLASSES: [&str; 3] = ["id", "name", "surface"];
-
 /// Represent the SQL table '***Mutation***'
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Mutation {
     id: u64,
     idpar: String,
     idmutation: u64,
-    #[serde(flatten)]
     shared_props: SharedMutationProps,
-    #[serde(flatten)]
     adresse: Adresse,
     valeur_fonciere: f64,
     vendu: bool,
@@ -87,9 +64,9 @@ impl Mutation {
         );
 
         let vendu = map
-            .get("parcvendu")
+            .get("parcvendue")
             .ok_or(())
-            .map_err(|_| error!("Failed to get the value of the key 'parcvendu'"))?
+            .map_err(|_| error!("Failed to get the value of the key 'parcvendue'"))?
             .as_bool()
             .ok_or(())
             .map_err(|_| error!("Inconsistant value : Expected a Boolean"))?;
@@ -109,6 +86,37 @@ impl Mutation {
             valeur_fonciere: valeurfonc,
             vendu,
         })
+    }
+}
+
+impl Serialize for Mutation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("Mutation", 2)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("idpar", &self.idpar)?;
+        state.serialize_field("idmutation", &self.idmutation)?;
+        // SharedMutationProps part
+        state.serialize_field("vefa", &self.shared_props.vefa)?;
+        state.serialize_field("typologie", &self.shared_props.typologie)?;
+        state.serialize_field("datemut", &self.shared_props.datemut)?;
+        state.serialize_field("nature", &self.shared_props.nature)?;
+        // Adresse part
+        state.serialize_field("btq", &self.adresse.btq)?;
+        state.serialize_field("voie", &self.adresse.voie)?;
+        state.serialize_field("novoie", &self.adresse.novoie)?;
+        state.serialize_field("codvoie", &self.adresse.codvoie)?;
+        state.serialize_field("commune", &self.adresse.commune)?;
+        state.serialize_field("typvoie", &self.adresse.typvoie)?;
+        state.serialize_field("codepostal", &self.adresse.codepostal)?;
+
+        state.serialize_field("valeur_fonciere", &self.valeur_fonciere)?;
+        state.serialize_field("vendu", &self.vendu)?;
+
+        state.end()
     }
 }
 
@@ -158,12 +166,12 @@ impl Adresse {
         );
 
         Ok(Adresse {
-            btq: unwrap_value(value.get("btq")),
-            voie: unwrap_value(value.get("voie")),
-            novoie: unwrap_value(value.get("novoie")),
-            codvoie: unwrap_value(value.get("codvoie")),
+            btq: unwrap_value(adresse.get("btq")),
+            voie: unwrap_value(adresse.get("voie")),
+            novoie: unwrap_value(adresse.get("novoie")),
+            codvoie: unwrap_value(adresse.get("codvoie")),
             commune,
-            typvoie: unwrap_value(value.get("typvoie")),
+            typvoie: unwrap_value(adresse.get("typvoie")),
             codepostal,
         })
     }
