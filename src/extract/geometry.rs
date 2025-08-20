@@ -34,12 +34,10 @@ fn clip_polygon(
     side: &str,
 ) -> Result<Vec<Vec<Vec<f64>>>, String> {
     let mut result: Vec<Vec<f64>> = Vec::new();
-    let s = polygon.get(polygon.len() - 1).ok_or(
-        format!(
-            "Failed to get the last element of the polygon : polygon size : {}",
-            polygon.len()
-        )
-    )?;
+    let s = polygon.get(polygon.len() - 1).ok_or(format!(
+        "Failed to get the last element of the polygon : polygon size : {}",
+        polygon.len()
+    ))?;
 
     let mut point_s: [f64; 2] = s[..]
         .try_into()

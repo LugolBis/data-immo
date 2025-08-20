@@ -20,5 +20,5 @@ Table Mutation (
 Table Classes (
     id integer not null,
     name varchar(30),
-    surface integer
+    surface float
 )

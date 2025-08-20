@@ -1,5 +1,7 @@
+mod geometry;
+
 use std::fs::{self, DirEntry, OpenOptions};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::PathBuf;
 
 use mylog::{error, info};
@@ -9,7 +11,8 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use tokio::time::{Duration, sleep};
 
-use crate::geometry::split_geometry;
+use crate::transform::transform_api_data;
+use geometry::split_geometry;
 
 const FILTERS: [(&str, &str); 3] = [
     ("valeurfonc[lte]", "100000000000000000"),
@@ -17,7 +20,7 @@ const FILTERS: [(&str, &str); 3] = [
     ("buffer", "0"),
 ];
 
-const TARGET_FOLDER: &str = "data/DVF/extracted";
+pub const TARGET_FOLDER: &str = "data/DVF/extracted";
 
 /// Return the API Key stored in the ***.env*** at the root
 fn get_api_key() -> Result<String, String> {
@@ -98,7 +101,7 @@ fn get_department(file_path: PathBuf) -> Result<Value, ()> {
     Ok(value)
 }
 
-async fn save_mutation_feature(
+async fn process_feature(
     feature_id: &str,
     api_key: &str,
     headers: &HeaderMap,
@@ -122,21 +125,14 @@ async fn save_mutation_feature(
 
         match (api_response, failed_retry) {
             (Ok(response), _) => {
-                let path = PathBuf::from(TARGET_FOLDER).join(format!("{}_{}.json", feature_id, success_count));
-
-                let mut file = OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .open(&path)
-                    .map_err(|e| error!("Failed to open the file {} : {}", path.display(), e))?;
+                let id_generated = format!("{}{}", feature_id, success_count);
 
                 let content = response
                     .text()
                     .await
                     .map_err(|e| error!("Failed to extract the response text : {}", e))?;
 
-                file.write_all(content.as_bytes())
-                    .map_err(|e| error!("Failed to write the content : {}", e))?;
+                transform_api_data(content, id_generated)?;
 
                 let _ = buffer.pop();
                 success_count += 1;
@@ -152,11 +148,18 @@ async fn save_mutation_feature(
                     let _ = sleep(Duration::from_secs(60));
                     failed_retry = true;
                 } else if regex_error.is_match(&message) {
-                    let geometry = &buffer.last().unwrap().get("geojson").ok_or(())
-                    .map_err(|_| error!(
-                        "Inconsistant data format whith none 'geojson' key : {:?}",
-                        buffer.last()
-                    ))?;
+                    let geometry =
+                        &buffer
+                            .last()
+                            .unwrap()
+                            .get("geojson")
+                            .ok_or(())
+                            .map_err(|_| {
+                                error!(
+                                    "Inconsistant data format whith none 'geojson' key : {:?}",
+                                    buffer.last()
+                                )
+                            })?;
 
                     match split_geometry(geometry) {
                         Ok((geometry1, geometry2)) => {
@@ -175,7 +178,6 @@ async fn save_mutation_feature(
                             let _ = buffer.pop();
                         }
                     }
-
                 } else {
                     let _ = buffer.pop();
                 }
@@ -205,10 +207,9 @@ async fn process_features(
         let mut data = Map::new();
         data.insert("geojson".to_string(), geometry.clone());
 
-        let feature_id = format!("{}_{}", dpt, index);
+        let feature_id = format!("{}{}", dpt, index);
 
-        if let Ok(_) = save_mutation_feature(&feature_id, api_key, headers, data, regex_error).await
-        {
+        if let Ok(_) = process_feature(&feature_id, api_key, headers, data, regex_error).await {
             info!(
                 "Successfully save the mutation from the dpt {} and feature {}",
                 dpt, index
@@ -272,9 +273,7 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                         path.display()
                     ))?
                     .as_array()
-                    .ok_or(
-                        "Failed to get the Array from the 'features' Value."
-                    )?
+                    .ok_or("Failed to get the Array from the 'features' Value.")?
                     .iter()
                     .map(|v| {
                         if let Value::Object(map) = v {
