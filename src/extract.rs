@@ -272,9 +272,9 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                         path.display()
                     ))?
                     .as_array()
-                    .ok_or(format!(
+                    .ok_or(
                         "Failed to get the Array from the 'features' Value."
-                    ))?
+                    )?
                     .iter()
                     .map(|v| {
                         if let Value::Object(map) = v {
@@ -287,8 +287,8 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                     .collect::<Vec<Map<String, Value>>>();
 
                 let _ = process_features(features, &api_key, &headers, dpt, &regex_error).await;
+                dpt += 1;
             }
-            dpt += 1;
         } else {
             info!("Skip the folder : {:?}", entry.path())
         }
