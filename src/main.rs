@@ -10,7 +10,7 @@ async fn main() {
         panic!("{}", error)
     }
 
-    match extract::main("data/FranceGeoJSON").await {
+    match extract::api_dvf::main("data/FranceGeoJSON").await {
         Ok(message) => println!("{}", message),
         Err(message) => {
             error!("{}", message);
