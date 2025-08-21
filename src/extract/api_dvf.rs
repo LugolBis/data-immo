@@ -1,16 +1,21 @@
 use std::fs::{self, DirEntry, OpenOptions};
 use std::io::Read;
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use futures::future::join_all;
 use mylog::{error, info};
 use regex::Regex;
 use reqwest::{Client, Response, header::HeaderMap};
 use serde::Serialize;
 use serde_json::{Map, Value};
+use tokio::runtime;
+use tokio::sync::Semaphore;
 use tokio::time::{Duration, sleep};
 
-use crate::transform::api_dvf::transform_api_data;
 use super::geometry::split_geometry;
+use super::utils::IdGenerator;
+use crate::transform::api_dvf::transform_api_data;
 
 const FILTERS: [(&str, &str); 3] = [
     ("valeurfonc[lte]", "100000000000000000"),
@@ -101,6 +106,7 @@ fn get_department(file_path: PathBuf) -> Result<Value, ()> {
 
 async fn process_feature(
     feature_id: &str,
+    id_generator: &IdGenerator,
     api_key: &str,
     headers: &HeaderMap,
     data: Map<String, Value>,
@@ -123,14 +129,14 @@ async fn process_feature(
 
         match (api_response, failed_retry) {
             (Ok(response), _) => {
-                let id_generated = format!("{}{}", feature_id, success_count);
+                let curent_feature_id = format!("{}{}", feature_id, success_count);
 
                 let content = response
                     .text()
                     .await
                     .map_err(|e| error!("Failed to extract the response text : {}", e))?;
 
-                transform_api_data(content, id_generated)?;
+                transform_api_data(content, id_generator, &curent_feature_id)?;
 
                 let _ = buffer.pop();
                 success_count += 1;
@@ -188,6 +194,7 @@ async fn process_feature(
 
 async fn process_features(
     features: Vec<Map<String, Value>>,
+    id_generator: &IdGenerator,
     api_key: &str,
     headers: &HeaderMap,
     dpt: usize,
@@ -207,7 +214,16 @@ async fn process_features(
 
         let feature_id = format!("{}{}", dpt, index);
 
-        if let Ok(_) = process_feature(&feature_id, api_key, headers, data, regex_error).await {
+        if let Ok(_) = process_feature(
+            &feature_id,
+            id_generator,
+            api_key,
+            headers,
+            data,
+            regex_error,
+        )
+        .await
+        {
             info!(
                 "Successfully save the mutation from the dpt {} and feature {}",
                 dpt, index
@@ -222,8 +238,9 @@ async fn process_features(
     Ok(())
 }
 
-/// Takes as input the folder who's contains the **GeoJSON** files from *'France GeoJSON'*.
-pub async fn main(folder_path: &str) -> Result<String, String> {
+fn set_up(
+    folder_path: &str,
+) -> Result<(Vec<DirEntry>, String, HeaderMap, Regex, IdGenerator), String> {
     let folder_path = PathBuf::from(folder_path);
     let target_folder = PathBuf::from(TARGET_FOLDER);
 
@@ -258,12 +275,35 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
         Regex::new(r#"403\s*:\s*\{"message":"Surface\s+(.*?)\s+du\s+GeoJSON\s+trop\s+grande"\}"#)
             .map_err(|e| format!("Failed to initiliaze the regex : {}", e))?;
 
+    let id_generator = IdGenerator::new();
+
+    Ok((entries, api_key, headers, regex_error, id_generator))
+}
+
+/// Takes as input the folder who's contains the **GeoJSON** files from *'France GeoJSON'*.
+pub async fn main(folder_path: &str) -> Result<String, String> {
+    let (entries, api_key, headers, regex_error, id_generator) = set_up(folder_path)?;
+
+    let semaphore = Arc::new(Semaphore::new(100));
+
+    let mut tasks = Vec::new();
+
     let mut dpt = 1usize;
     for entry in entries {
         let path = entry.path();
 
         if path.is_file() {
             if let Ok(Value::Object(map)) = get_department(path.clone()) {
+                let permit = semaphore
+                    .clone()
+                    .acquire_owned()
+                    .await
+                    .map_err(|e| format!("{}", e))?;
+                let id_generator_clone = id_generator.clone();
+                let api_key_clone = api_key.clone();
+                let headers_clone = headers.clone();
+                let regex_error_clone = regex_error.clone();
+
                 let features = map
                     .get("features")
                     .ok_or(format!(
@@ -283,13 +323,28 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                     .flatten()
                     .collect::<Vec<Map<String, Value>>>();
 
-                let _ = process_features(features, &api_key, &headers, dpt, &regex_error).await;
+                tasks.push(tokio::spawn(async move {
+                    let result = process_features(
+                        features,
+                        &id_generator_clone,
+                        &api_key_clone,
+                        &headers_clone,
+                        dpt,
+                        &regex_error_clone,
+                    )
+                    .await;
+                    drop(permit);
+                    result
+                }));
+
                 dpt += 1;
             }
         } else {
             info!("Skip the folder : {:?}", entry.path())
         }
     }
+
+    let _ = join_all(tasks).await;
 
     Ok("Successfully run the Data pipeline !".to_string())
 }

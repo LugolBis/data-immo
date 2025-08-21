@@ -5,16 +5,15 @@ use mylog::error;
 use serde::Serialize;
 use serde_json::{self, Map, Value};
 
-use crate::extract::api_dvf::TARGET_FOLDER;
 use super::tables::{Classes, Mutation, SharedMutationProps};
+use crate::extract::{api_dvf::TARGET_FOLDER, utils::IdGenerator};
 
 fn map_parcelles(
     parcelles: Vec<Map<String, Value>>,
     shared_props: &SharedMutationProps,
     valeurfonc: f64,
     idmutation: u64,
-    id_generated: &str,
-    id_parcelle: &mut u64,
+    id_generator: &IdGenerator,
     mutations: &mut Vec<Mutation>,
     classes: &mut Vec<Classes>,
 ) -> Result<(), ()> {
@@ -27,11 +26,7 @@ fn map_parcelles(
             .ok_or(())
             .map_err(|_| error!("Inconsistant value : Expected a Array<Value>"))?;
 
-        *id_parcelle += 1;
-
-        let id = format!("{}{}", id_generated, id_parcelle)
-            .parse::<u64>()
-            .map_err(|e| error!("id={}{} : {}", id_generated, id_parcelle, e))?;
+        let id = id_generator.next_id();
 
         let classes_rows = Classes::extract(dcnt, id)?;
         let mutation_row = Mutation::extract(parcelle, shared_props, valeurfonc, idmutation, id)?;
@@ -45,8 +40,7 @@ fn map_parcelles(
 fn map_dispositions(
     dispositions: &Vec<Value>,
     shared_props: &SharedMutationProps,
-    id_generated: &str,
-    id_parcelle: &mut u64,
+    id_generator: &IdGenerator,
     mutations: &mut Vec<Mutation>,
     classes: &mut Vec<Classes>,
 ) -> Result<(), ()> {
@@ -104,8 +98,7 @@ fn map_dispositions(
             shared_props,
             valeurfonc,
             idmutation,
-            id_generated,
-            id_parcelle,
+            id_generator,
             mutations,
             classes,
         )?;
@@ -116,8 +109,7 @@ fn map_dispositions(
 
 fn map_properties(
     properties: &Map<String, Value>,
-    id_generated: &str,
-    id_parcelle: &mut u64,
+    id_generator: &IdGenerator,
     mutations: &mut Vec<Mutation>,
     classes: &mut Vec<Classes>,
 ) -> Result<(), ()> {
@@ -144,9 +136,11 @@ fn map_properties(
             .get("typologie")
             .ok_or(())
             .map_err(|_| error!("Failed to get the value of the key 'typologie'"))?
-            .as_object().ok_or(())
+            .as_object()
+            .ok_or(())
             .map_err(|_| error!("Inconsistant value : Expected a Map<String, Value>"))?
-            .get("libelle").ok_or(())
+            .get("libelle")
+            .ok_or(())
             .map_err(|_| error!("Failed to get the value of the key 'libelle'"))?
             .as_str()
             .ok_or(())
@@ -158,9 +152,11 @@ fn map_properties(
             .get("nature_mutation")
             .ok_or(())
             .map_err(|_| error!("Failed to get the value of the key 'nature_mutation'"))?
-            .as_object().ok_or(())
+            .as_object()
+            .ok_or(())
             .map_err(|_| error!("Inconsistant value : Expected a Map<String, Value>"))?
-            .get("libelle").ok_or(())
+            .get("libelle")
+            .ok_or(())
             .map_err(|_| error!("Failed to get the value of the key 'libelle'"))?
             .as_str()
             .ok_or(())
@@ -180,8 +176,7 @@ fn map_properties(
     map_dispositions(
         dispositions,
         &shared_props,
-        id_generated,
-        id_parcelle,
+        id_generator,
         mutations,
         classes,
     )
@@ -191,6 +186,10 @@ fn save_transformations(
     path: PathBuf,
     records: Vec<(impl Serialize + std::fmt::Debug)>,
 ) -> Result<(), ()> {
+    if records.len() == 0 {
+        return Ok(());
+    }
+
     let mut writer =
         Writer::from_path(&path).map_err(|e| error!("File path '{:?}' : {}", path, e))?;
 
@@ -207,7 +206,11 @@ fn save_transformations(
     Ok(())
 }
 
-pub fn transform_api_data(data: String, id_generated: String) -> Result<(), ()> {
+pub fn transform_api_data(
+    data: String,
+    id_generator: &IdGenerator,
+    feature_id: &str,
+) -> Result<(), ()> {
     let value: Value = serde_json::from_str(&data).map_err(|e| {
         error!(
             "Failed to convert the '{}' content to a Value : {}",
@@ -228,7 +231,6 @@ pub fn transform_api_data(data: String, id_generated: String) -> Result<(), ()> 
 
     let mut mutations: Vec<Mutation> = Vec::new();
     let mut classes: Vec<Classes> = Vec::new();
-    let mut id_parcelle = 0u64;
 
     for feature in features {
         let properties = feature
@@ -246,20 +248,12 @@ pub fn transform_api_data(data: String, id_generated: String) -> Result<(), ()> 
                 error!("Inconsistant value : Expected a Value::Object<Map<String, Value>>")
             })?;
 
-        map_properties(
-            properties,
-            &id_generated,
-            &mut id_parcelle,
-            &mut mutations,
-            &mut classes,
-        )?;
-
-        id_parcelle += 1;
+        map_properties(properties, id_generator, &mut mutations, &mut classes)?;
     }
 
     let folder_path = PathBuf::from(TARGET_FOLDER);
-    let mutations_path = folder_path.join(format!("mutations_{}.csv", id_generated));
-    let classes_path = folder_path.join(format!("classes_{}.csv", id_generated));
+    let mutations_path = folder_path.join(format!("mutations_{}.csv", feature_id));
+    let classes_path = folder_path.join(format!("classes_{}.csv", feature_id));
 
     save_transformations(mutations_path, mutations)?;
     save_transformations(classes_path, classes)?;

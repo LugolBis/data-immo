@@ -1,7 +1,8 @@
 mod extract;
+mod load;
 mod transform;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 16)]
 async fn main() {
     use extract;
     use mylog::{error, logs};
