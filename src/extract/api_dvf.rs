@@ -9,7 +9,6 @@ use regex::Regex;
 use reqwest::{Client, Response, header::HeaderMap};
 use serde::Serialize;
 use serde_json::{Map, Value};
-use tokio::runtime;
 use tokio::sync::Semaphore;
 use tokio::time::{Duration, sleep};
 
@@ -136,7 +135,7 @@ async fn process_feature(
                     .await
                     .map_err(|e| error!("Failed to extract the response text : {}", e))?;
 
-                transform_api_data(content, id_generator, &curent_feature_id)?;
+                let _ = transform_api_data(content, id_generator, &curent_feature_id);
 
                 let _ = buffer.pop();
                 success_count += 1;

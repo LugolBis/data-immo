@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use csv::Writer;
-use mylog::error;
+use mylog::{error, warn};
 use serde::Serialize;
 use serde_json::{self, Map, Value};
 
@@ -83,7 +83,12 @@ fn map_dispositions(
             .map_err(|_| error!("Failed to get the value of the key 'valeurfonc'"))?
             .as_f64()
             .ok_or(())
-            .map_err(|_| error!("Inconsistant value : Expected a f64"))?;
+            .map_err(|_| {
+                error!(
+                    "Inconsistant value : Expected a f64 - value={:?}",
+                    disposition.get("valeurfonc")
+                )
+            })?;
 
         let idmutation = disposition
             .get("idmutation")
@@ -186,10 +191,6 @@ fn save_transformations(
     path: PathBuf,
     records: Vec<(impl Serialize + std::fmt::Debug)>,
 ) -> Result<(), ()> {
-    if records.len() == 0 {
-        return Ok(());
-    }
-
     let mut writer =
         Writer::from_path(&path).map_err(|e| error!("File path '{:?}' : {}", path, e))?;
 
@@ -255,7 +256,13 @@ pub fn transform_api_data(
     let mutations_path = folder_path.join(format!("mutations_{}.csv", feature_id));
     let classes_path = folder_path.join(format!("classes_{}.csv", feature_id));
 
-    save_transformations(mutations_path, mutations)?;
-    save_transformations(classes_path, classes)?;
+    if mutations.len() > 0 && classes.len() > 0 {
+        save_transformations(mutations_path, mutations)?;
+        save_transformations(classes_path, classes)?;
+    }
+    else {
+        warn!("Incomplete values {}", feature_id)
+    }
+
     Ok(())
 }

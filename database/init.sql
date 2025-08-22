@@ -23,5 +23,6 @@ CREATE TABLE Mutation (
 CREATE TABLE Classe (
     id integer not null,
     name varchar(30),
-    surface float
+    surface float,
+    foreign key (id) references Mutation(id) on delete cascade
 );
