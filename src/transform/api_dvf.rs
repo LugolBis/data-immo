@@ -259,8 +259,7 @@ pub fn transform_api_data(
     if mutations.len() > 0 && classes.len() > 0 {
         save_transformations(mutations_path, mutations)?;
         save_transformations(classes_path, classes)?;
-    }
-    else {
+    } else {
         warn!("Incomplete values {}", feature_id)
     }
 

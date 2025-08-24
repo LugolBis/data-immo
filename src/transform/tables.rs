@@ -5,7 +5,7 @@ use serde_json::{self, Map, Value};
 /// Represent the SQL table '***Mutation***'
 #[derive(Debug, Clone)]
 pub struct Mutation {
-    id: u64,
+    idg: u64,
     idpar: String,
     idmutation: u64,
     shared_props: SharedMutationProps,
@@ -41,8 +41,8 @@ pub struct Adresse {
 /// Represent the SQL table '***Classes***'
 #[derive(Debug, Clone, Serialize)]
 pub struct Classes {
-    id: u64,
-    name: String,
+    idg: u64,
+    libelle: String,
     surface: f64,
 }
 
@@ -78,7 +78,7 @@ impl Mutation {
         let adresse = Adresse::extract(adresses)?;
 
         Ok(Mutation {
-            id,
+            idg: id,
             idpar,
             idmutation,
             shared_props: shared_props.clone(),
@@ -96,7 +96,7 @@ impl Serialize for Mutation {
     {
         use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("Mutation", 2)?;
-        state.serialize_field("id", &self.id)?;
+        state.serialize_field("id", &self.idg)?;
         state.serialize_field("idpar", &self.idpar)?;
         state.serialize_field("idmutation", &self.idmutation)?;
         // SharedMutationProps part
@@ -191,8 +191,8 @@ impl Classes {
                             }
                             let name = String::from(name.as_str().ok_or(())?);
                             Ok(Classes {
-                                id: id,
-                                name: name,
+                                idg: id,
+                                libelle: name,
                                 surface: surface,
                             })
                         }
