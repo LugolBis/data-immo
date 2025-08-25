@@ -1,4 +1,11 @@
-CREATE OR REPLACE TABLE Mutations (
+SET threads = 4;
+SET preserve_insertion_order = false;
+SET temp_directory = 'data/DVF/';
+
+DROP TABLE IF EXISTS Classes;
+DROP TABLE IF EXISTS Mutations;
+
+CREATE TABLE Mutations (
 	idg INTEGER PRIMARY KEY,
 	idpar VARCHAR NOT NULL,
 	idmutation INTEGER NOT NULL,
@@ -17,7 +24,7 @@ CREATE OR REPLACE TABLE Mutations (
 	vendu BOOLEAN
 );
 
-CREATE OR REPLACE TABLE Classes (
+CREATE TABLE Classes (
 	idg INTEGER NOT NULL,
 	libelle VARCHAR,
 	surface DECIMAL(8,2),

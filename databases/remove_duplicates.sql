@@ -1,11 +1,11 @@
-with mutations_duplicate as (
+WITH mutations_duplicate AS (
     SELECT
         idg,
         ROWNUMBER() OVER (PARTITION BY idg, idpar, datemut ORDER BY idg) as rn
     FROM
         Mutations
 ),
-to_delete AS (
+mutations_to_delete AS (
     SELECT
         idg
     FROM
@@ -15,4 +15,7 @@ to_delete AS (
 )
 
 DELETE FROM Mutations 
-WHERE idg IN (SELECT idg FROM to_delete);
+WHERE idg IN (SELECT idg FROM mutations_to_delete);
+
+DELETE FROM Classes
+WHERE idg IN (SELECT idg from mutations_to_delete);

@@ -96,7 +96,7 @@ impl Serialize for Mutation {
     {
         use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("Mutation", 2)?;
-        state.serialize_field("id", &self.idg)?;
+        state.serialize_field("idg", &self.idg)?;
         state.serialize_field("idpar", &self.idpar)?;
         state.serialize_field("idmutation", &self.idmutation)?;
         // SharedMutationProps part
