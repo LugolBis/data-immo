@@ -29,12 +29,6 @@ fn map_parcelles(
         let id = id_generator.next_id();
 
         let classes_rows = Classes::extract(dcnt, id)?;
-        
-        if classes_rows.len() == 0 {
-            warn!("Empty surface here.");
-            return Ok(());
-        }
-
         let mutation_row = Mutation::extract(parcelle, shared_props, valeurfonc, idmutation, id)?;
 
         classes.extend(classes_rows);

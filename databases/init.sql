@@ -1,4 +1,4 @@
-CREATE TABLE Mutations (
+CREATE OR REPLACE TABLE Mutations (
 	idg INTEGER PRIMARY KEY,
 	idpar VARCHAR NOT NULL,
 	idmutation INTEGER NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE Mutations (
 	vendu BOOLEAN
 );
 
-CREATE TABLE Classes (
+CREATE OR REPLACE TABLE Classes (
 	idg INTEGER NOT NULL,
 	libelle VARCHAR,
 	surface DECIMAL(8,2),
