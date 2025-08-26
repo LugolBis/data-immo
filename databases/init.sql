@@ -27,6 +27,6 @@ CREATE TABLE Mutations (
 CREATE TABLE Classes (
 	idg INTEGER NOT NULL,
 	libelle VARCHAR,
-	surface DECIMAL(8,2),
+	surface DECIMAL(12,2),
 	FOREIGN KEY (idg) REFERENCES Mutations(idg)
 );

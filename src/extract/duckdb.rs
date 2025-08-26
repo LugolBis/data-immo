@@ -1,6 +1,5 @@
 use std::{
-    fs::{self, DirEntry},
-    path::PathBuf,
+    fs::{self, DirEntry}, path::PathBuf
 };
 
 use duckdb::Connection;
@@ -20,11 +19,12 @@ fn new_connection(db_path: Option<&str>) -> Result<Connection, ()> {
 }
 
 fn insert_values(conn: &Connection, path: &str, table_name: &str) -> Result<(), ()> {
+    /* 
     let mut stmt = conn
         .prepare(&format!("TRUNCATE TABLE {};", table_name))
         .map_err(|e| error!("{}", e))?;
 
-    stmt.execute([]).map_err(|e| error!("{}", e))?;
+    stmt.execute([]).map_err(|e| error!("{}", e))?;*/
 
     let mut stmt = conn
         .prepare(&format!(
@@ -52,24 +52,41 @@ fn from_folder(
         .flatten()
         .collect::<Vec<DirEntry>>();
 
+    let mut target_folder: PathBuf;
+    if let Some(path) = folder_path.parent() {
+        target_folder = path.to_path_buf();
+    }
+    else {
+        target_folder = PathBuf::new();
+    }
+    target_folder.push("cleaned");
+
+    if !fs::exists(&target_folder).unwrap_or(false) {
+        let _ = fs::create_dir(&target_folder);
+    }
+
     for entry in entries {
         let path = entry.path();
         let filename = path.file_name().unwrap().to_string_lossy();
 
         if filename.starts_with(FILE_PATTERN) && path.extension().unwrap_or_default() == "csv" {
-            let path_mutations = path.display().to_string();
-            let path_classes = path_mutations.replace("mutations", "classes");
+            let mutations_src = path.as_os_str().to_string_lossy();
+            let classes_src = mutations_src.replace("mutations", "classes");
 
             // Load data from CSV files
-            insert_values(&conn, &path_mutations, "mutations")?;
-            insert_values(&conn, &path_classes, "classes")?;
+            insert_values(&conn, &mutations_src, "mutations")?;
+            insert_values(&conn, &classes_src, "classes")?;
 
             // Transform data
             function(&conn)?;
 
+            let binding = target_folder.join(filename.as_ref());
+            let mutations_dest = binding.as_os_str().to_string_lossy();
+            let classes_dest = mutations_dest.replace("mutations", "classes");
+
             // Export transformed data
-            export_to_csv(&conn, &path_mutations, "mutations")?;
-            export_to_csv(&conn, &path_classes, "classes")?;
+            export_to_csv(&conn, &mutations_dest, "mutations")?;
+            export_to_csv(&conn, &classes_dest, "classes")?;
         }
     }
 
@@ -80,12 +97,12 @@ fn from_folder(
 fn export_to_csv(conn: &Connection, file_path: &str, table_name: &str) -> Result<(), ()> {
     let file_path = PathBuf::from(file_path);
 
-    let _ = fs::remove_file(&file_path);
+    fs::File::create(&file_path).map_err(|e| error!("{}", e))?;
 
     let mut stmt = conn
         .prepare(&format!(
-            "COPY {} TO '{:?}' (HEADER, DELIMITER ',')",
-            table_name, file_path
+            "COPY {} TO '{}' (HEADER, DELIMITER ',')",
+            table_name, &file_path.as_os_str().to_string_lossy()
         ))
         .map_err(|e| error!("{}", e))?;
 

@@ -8,5 +8,5 @@ pub async fn task1() -> Result<String, String> {
 }
 
 pub fn task2() -> Result<String, String> {
-    extract::duckdb::main("data/DVF/extracted", Some("data/DVF/db.duckdb"))
+    extract::duckdb::main("data/DVF/extracted", None)
 }
