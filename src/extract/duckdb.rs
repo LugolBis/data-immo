@@ -19,13 +19,6 @@ fn new_connection(db_path: Option<&str>) -> Result<Connection, ()> {
 }
 
 fn insert_values(conn: &Connection, path: &str, table_name: &str) -> Result<(), ()> {
-    /* 
-    let mut stmt = conn
-        .prepare(&format!("TRUNCATE TABLE {};", table_name))
-        .map_err(|e| error!("{}", e))?;
-
-    stmt.execute([]).map_err(|e| error!("{}", e))?;*/
-
     let mut stmt = conn
         .prepare(&format!(
             "INSERT INTO {} SELECT * FROM read_csv('{}', AUTO_DETECT=TRUE, HEADER=TRUE)",
