@@ -244,23 +244,12 @@ fn set_up(
     let target_folder = PathBuf::from(TARGET_FOLDER);
 
     if !fs::exists(&target_folder).unwrap_or(false) {
-        let _ = fs::create_dir_all(&target_folder).map_err(|e| {
-            format!(
-                "Failed to create the folder {} : {}",
-                target_folder.display(),
-                e
-            )
-        })?;
+        let _ = fs::create_dir_all(&target_folder)
+            .map_err(|e| format!("Failed to create the folder {:?} : {}", target_folder, e))?;
     }
 
     let entries = fs::read_dir(&folder_path)
-        .map_err(|e| {
-            format!(
-                "Failed to read the folder {} : {}",
-                folder_path.display(),
-                e
-            )
-        })?
+        .map_err(|e| format!("Failed to read the folder {:?} : {}", folder_path, e))?
         .flatten()
         .collect::<Vec<DirEntry>>();
 

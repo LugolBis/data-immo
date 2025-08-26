@@ -1,5 +1,6 @@
 use std::{
-    fs::{self, DirEntry}, path::PathBuf
+    fs::{self, DirEntry},
+    path::PathBuf,
 };
 
 use duckdb::Connection;
@@ -48,8 +49,7 @@ fn from_folder(
     let mut target_folder: PathBuf;
     if let Some(path) = folder_path.parent() {
         target_folder = path.to_path_buf();
-    }
-    else {
+    } else {
         target_folder = PathBuf::new();
     }
     target_folder.push("cleaned");
@@ -80,6 +80,13 @@ fn from_folder(
             // Export transformed data
             export_to_csv(&conn, &mutations_dest, "mutations")?;
             export_to_csv(&conn, &classes_dest, "classes")?;
+
+            fs::remove_file(&path)
+                .map_err(|e| error!("Failed to remove the file {:?} : {}", path, e))?;
+
+            let path = PathBuf::from(classes_src);
+            fs::remove_file(&path)
+                .map_err(|e| error!("Failed to remove the file {:?} : {}", path, e))?;
         }
     }
 
@@ -95,7 +102,8 @@ fn export_to_csv(conn: &Connection, file_path: &str, table_name: &str) -> Result
     let mut stmt = conn
         .prepare(&format!(
             "COPY {} TO '{}' (HEADER, DELIMITER ',')",
-            table_name, &file_path.as_os_str().to_string_lossy()
+            table_name,
+            &file_path.as_os_str().to_string_lossy()
         ))
         .map_err(|e| error!("{}", e))?;
 
