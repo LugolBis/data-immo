@@ -14,7 +14,8 @@ use tokio::time::{Duration, sleep};
 
 use super::geometry::split_geometry;
 use super::utils::IdGenerator;
-use crate::transform::api_dvf::{transform_api_data};
+use crate::transform::api_dvf::transform_api_data;
+use crate::transform::parquet_data::ParquetData;
 use crate::transform::tables::{Classes, Mutation};
 
 const FILTERS: [(&str, &str); 3] = [
@@ -193,11 +194,12 @@ async fn process_feature(
     let classes_path = folder_path.join(format!("classes_{}.parquet", feature_id));
 
     if mutations.len() > 0 && classes.len() > 0 {
-        Mutation::write_to_parquet(&mutations, &mutations_path)
+        ParquetData::write_to_parquet(&mutations, &mutations_path)
             .map_err(|e| error!("Failed to save mutations : {:?}", e))?;
 
-        Classes::write_to_parquet(&classes, &classes_path)
+        ParquetData::write_to_parquet(&classes, &classes_path)
             .map_err(|e| error!("Failed to save classes : {:?}", e))?;
+
         Ok(())
     } else {
         warn!("Incomplete values {}", feature_id);
@@ -347,5 +349,5 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
         }
     }
 
-    Ok("Successfully run the Data pipeline !".to_string())
+    Ok("Successfully extract and save the Data from the API DVF+ !".to_string())
 }
