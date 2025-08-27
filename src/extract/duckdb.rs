@@ -22,7 +22,7 @@ fn new_connection(db_path: Option<&str>) -> Result<Connection, ()> {
 fn insert_values(conn: &Connection, path: &str, table_name: &str) -> Result<(), ()> {
     let mut stmt = conn
         .prepare(&format!(
-            "INSERT INTO {} SELECT * FROM read_csv('{}', AUTO_DETECT=TRUE, HEADER=TRUE)",
+            "INSERT INTO {} SELECT * FROM read_parquet('{}')",
             table_name, path
         ))
         .map_err(|e| error!("{}", e))?;
@@ -62,11 +62,11 @@ fn from_folder(
         let path = entry.path();
         let filename = path.file_name().unwrap().to_string_lossy();
 
-        if filename.starts_with(FILE_PATTERN) && path.extension().unwrap_or_default() == "csv" {
+        if filename.starts_with(FILE_PATTERN) && path.extension().unwrap_or_default() == "parquet" {
             let mutations_src = path.as_os_str().to_string_lossy();
             let classes_src = mutations_src.replace("mutations", "classes");
 
-            // Load data from CSV files
+            // Load data from Parquet files
             insert_values(&conn, &mutations_src, "mutations")?;
             insert_values(&conn, &classes_src, "classes")?;
 
@@ -78,8 +78,8 @@ fn from_folder(
             let classes_dest = mutations_dest.replace("mutations", "classes");
 
             // Export transformed data
-            export_to_csv(&conn, &mutations_dest, "mutations")?;
-            export_to_csv(&conn, &classes_dest, "classes")?;
+            export_to_parquet(&conn, &mutations_dest, "mutations")?;
+            export_to_parquet(&conn, &classes_dest, "classes")?;
 
             fs::remove_file(&path)
                 .map_err(|e| error!("Failed to remove the file {:?} : {}", path, e))?;
@@ -94,14 +94,14 @@ fn from_folder(
 }
 
 /// Export the ***table_name*** into the ***file_path***
-fn export_to_csv(conn: &Connection, file_path: &str, table_name: &str) -> Result<(), ()> {
+fn export_to_parquet(conn: &Connection, file_path: &str, table_name: &str) -> Result<(), ()> {
     let file_path = PathBuf::from(file_path);
 
     fs::File::create(&file_path).map_err(|e| error!("{}", e))?;
 
     let mut stmt = conn
         .prepare(&format!(
-            "COPY {} TO '{}' (HEADER, DELIMITER ',')",
+            "COPY {} TO '{}' (FORMAT PARQUET)",
             table_name,
             &file_path.as_os_str().to_string_lossy()
         ))

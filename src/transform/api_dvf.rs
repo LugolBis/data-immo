@@ -1,8 +1,4 @@
-use std::path::PathBuf;
-
-use csv::Writer;
 use mylog::error;
-use serde::Serialize;
 use serde_json::{self, Map, Value};
 
 use super::tables::{Classes, Mutation, SharedMutationProps};
@@ -185,26 +181,6 @@ fn map_properties(
         mutations,
         classes,
     )
-}
-
-pub fn save_transformations(
-    path: PathBuf,
-    records: Vec<(impl Serialize + std::fmt::Debug)>,
-) -> Result<(), ()> {
-    let mut writer =
-        Writer::from_path(&path).map_err(|e| error!("File path '{:?}' : {}", path, e))?;
-
-    for record in &records {
-        writer
-            .serialize(record)
-            .map_err(|e| error!("Record={:?} : {}", record, e))?;
-    }
-
-    writer
-        .flush()
-        .map_err(|e| error!("Failed to flush : {}", e))?;
-
-    Ok(())
 }
 
 pub fn transform_api_data(

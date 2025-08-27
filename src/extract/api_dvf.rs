@@ -14,7 +14,7 @@ use tokio::time::{Duration, sleep};
 
 use super::geometry::split_geometry;
 use super::utils::IdGenerator;
-use crate::transform::api_dvf::{save_transformations, transform_api_data};
+use crate::transform::api_dvf::{transform_api_data};
 use crate::transform::tables::{Classes, Mutation};
 
 const FILTERS: [(&str, &str); 3] = [
@@ -112,7 +112,6 @@ async fn process_feature(
     data: Map<String, Value>,
     regex_error: &Regex,
 ) -> Result<(), ()> {
-    let mut success_count = 0usize;
     let mut failed_retry = false;
     let mut buffer: Vec<Map<String, Value>> = Vec::new();
     buffer.push(data);
@@ -132,21 +131,14 @@ async fn process_feature(
 
         match (api_response, failed_retry) {
             (Ok(response), _) => {
-
                 let content = response
                     .text()
                     .await
                     .map_err(|e| error!("Failed to extract the response text : {}", e))?;
 
-                let _ = transform_api_data(
-                    content,
-                    id_generator,
-                    &mut mutations,
-                    &mut classes,
-                );
+                let _ = transform_api_data(content, id_generator, &mut mutations, &mut classes);
 
                 let _ = buffer.pop();
-                success_count += 1;
             }
             (Err(message), true) => {
                 error!("{} - {}", feature_id, message);
@@ -197,12 +189,15 @@ async fn process_feature(
     }
 
     let folder_path = PathBuf::from(TARGET_FOLDER);
-    let mutations_path = folder_path.join(format!("mutations_{}.csv", feature_id));
-    let classes_path = folder_path.join(format!("classes_{}.csv", feature_id));
+    let mutations_path = folder_path.join(format!("mutations_{}.parquet", feature_id));
+    let classes_path = folder_path.join(format!("classes_{}.parquet", feature_id));
 
     if mutations.len() > 0 && classes.len() > 0 {
-        save_transformations(mutations_path, mutations)?;
-        save_transformations(classes_path, classes)?;
+        Mutation::write_to_parquet(&mutations, &mutations_path)
+            .map_err(|e| error!("Failed to save mutations : {:?}", e))?;
+
+        Classes::write_to_parquet(&classes, &classes_path)
+            .map_err(|e| error!("Failed to save classes : {:?}", e))?;
         Ok(())
     } else {
         warn!("Incomplete values {}", feature_id);

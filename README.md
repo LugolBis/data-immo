@@ -50,7 +50,7 @@ flowchart LR
   - Handles API rate limiting, retries, and efficient pagination using Rust’s concurrency model.
 
 - **Data Transformation**  
-  - Uses **DuckDB** to transform raw **CSV** data into structured, queryable formats.  
+  - Uses **DuckDB** to transform optimized **Parquet** data into structured, queryable formats.  
   - Rust is used for additional transformations, data enrichment, and performance-critical operations (I/O, etc.).  
 
 - **Data Validation & Loading**  
@@ -60,14 +60,14 @@ flowchart LR
 ## 🛠️ Tech Stack  
 
 - **Rust** → Core language for API calls, transformations, and performance optimization.  
-- **DuckDB** → In-process SQL engine for fast transformations of raw CSV datasets.  
+- **DuckDB** → In-process SQL engine for fast transformations of optimized Parquet datasets.  
 - **dbt** → Data modeling, testing, and validation layer.  
 - **Dremio** → Lakehouse platform for analytics and querying.  
 
 ## 📂 Pipeline Overview  
 
 1. **Extract**: Retrieve raw transaction data from DVF+ API.  
-2. **Stage**: Store raw data as CSV.  
+2. **Stage**: Store raw data as Parquet.  
 3. **Transform**: Apply transformations using DuckDB and Rust.  
 4. **Validate & Model**: Use dbt to ensure data quality and prepare final schemas.  
 5. **Load**: Push validated datasets into Dremio for downstream analytics.
