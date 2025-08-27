@@ -101,7 +101,7 @@ impl Adresse {
             .ok_or(())
             .map_err(|_| error!("Inconsistant value : Expected an Array<Value>"))?;
         let adresse = adresses
-            .get(0)
+            .first()
             .ok_or(())
             .map_err(|_| error!("Empty adresses"))?
             .as_object()
@@ -141,10 +141,10 @@ impl Adresse {
 }
 
 impl Classes {
-    pub fn extract(values: &Vec<Value>, id: u64) -> Result<Vec<Classes>, ()> {
+    pub fn extract(values: &[Value], id: u64) -> Result<Vec<Classes>, ()> {
         let values = values
-            .into_iter()
-            .map(|v| {
+            .iter()
+            .flat_map(|v| {
                 if let Value::Object(map) = v {
                     match (map.get("surface"), map.get("libregroupement")) {
                         (Some(surface), Some(name)) => {
@@ -156,7 +156,7 @@ impl Classes {
                             Ok(Classes {
                                 idg: id,
                                 libelle: name,
-                                surface: surface,
+                                surface,
                             })
                         }
                         _ => Err(()),
@@ -165,7 +165,6 @@ impl Classes {
                     Err(())
                 }
             })
-            .flatten()
             .collect::<Vec<Classes>>();
 
         Ok(values)
@@ -174,11 +173,7 @@ impl Classes {
 
 fn unwrap_value(value: Option<&Value>) -> Option<String> {
     if let Some(value) = value {
-        if let Some(value) = value.as_str() {
-            Some(String::from(value))
-        } else {
-            None
-        }
+        value.as_str().map(String::from)
     } else {
         None
     }

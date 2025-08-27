@@ -34,22 +34,21 @@ fn map_parcelles(
 }
 
 fn map_dispositions(
-    dispositions: &Vec<Value>,
+    dispositions: &[Value],
     shared_props: &SharedMutationProps,
     id_generator: &IdGenerator,
     mutations: &mut Vec<Mutation>,
     classes: &mut Vec<Classes>,
 ) -> Result<(), ()> {
     let dispositions = dispositions
-        .into_iter()
-        .map(|v| {
+        .iter()
+        .flat_map(|v| {
             if let Value::Object(map) = v {
                 Ok(map)
             } else {
                 Err(())
             }
         })
-        .flatten()
         .collect::<Vec<&Map<String, Value>>>();
 
     for disposition in dispositions {
@@ -62,15 +61,14 @@ fn map_dispositions(
             .map_err(|_| error!("Inconsistant value : Expected a Array<Value>"))?;
 
         let parcelles = parcelles
-            .into_iter()
-            .map(|v| {
+            .iter()
+            .flat_map(|v| {
                 if let Value::Object(map) = v {
                     Ok(map.clone())
                 } else {
                     Err(())
                 }
             })
-            .flatten()
             .collect::<Vec<Map<String, Value>>>();
 
         let valeurfonc = disposition

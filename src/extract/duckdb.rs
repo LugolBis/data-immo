@@ -41,7 +41,7 @@ fn from_folder(
     conn.execute_batch(INIT_SCRIPT)
         .map_err(|e| error!("Failed to execute init script : {}", e))?;
 
-    let entries = fs::read_dir(&folder_path)
+    let entries = fs::read_dir(folder_path)
         .map_err(|e| error!("Failed to read the folder {:?} : {}", folder_path, e))?
         .flatten()
         .collect::<Vec<DirEntry>>();
@@ -67,19 +67,19 @@ fn from_folder(
             let classes_src = mutations_src.replace("mutations", "classes");
 
             // Load data from Parquet files
-            insert_values(&conn, &mutations_src, "mutations")?;
-            insert_values(&conn, &classes_src, "classes")?;
+            insert_values(conn, &mutations_src, "mutations")?;
+            insert_values(conn, &classes_src, "classes")?;
 
             // Transform data
-            function(&conn)?;
+            function(conn)?;
 
             let binding = target_folder.join(filename.as_ref());
             let mutations_dest = binding.as_os_str().to_string_lossy();
             let classes_dest = mutations_dest.replace("mutations", "classes");
 
             // Export transformed data
-            export_to_parquet(&conn, &mutations_dest, "mutations")?;
-            export_to_parquet(&conn, &classes_dest, "classes")?;
+            export_to_parquet(conn, &mutations_dest, "mutations")?;
+            export_to_parquet(conn, &classes_dest, "classes")?;
 
             fs::remove_file(&path)
                 .map_err(|e| error!("Failed to remove the file {:?} : {}", path, e))?;

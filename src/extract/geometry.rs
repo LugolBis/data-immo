@@ -1,17 +1,12 @@
 use serde_json::{Map, Value};
 
 fn inside(point: &[f64; 2], split_value: f64, axis: &str, side: &str) -> bool {
-    let value: f64;
-    if axis == "x" {
-        value = point[0];
-    } else {
-        value = point[1];
-    }
+    let value: f64 = if axis == "x" { point[0] } else { point[1] };
 
     if ["left", "bottom"].contains(&side) {
-        return value <= split_value;
+        value <= split_value
     } else {
-        return value >= split_value;
+        value >= split_value
     }
 }
 
@@ -34,7 +29,7 @@ fn clip_polygon(
     side: &str,
 ) -> Result<Vec<Vec<Vec<f64>>>, String> {
     let mut result: Vec<Vec<f64>> = Vec::new();
-    let s = polygon.get(polygon.len() - 1).ok_or(format!(
+    let s = polygon.last().ok_or(format!(
         "Failed to get the last element of the polygon : polygon size : {}",
         polygon.len()
     ))?;
@@ -57,11 +52,9 @@ fn clip_polygon(
                 result.push(intersection.to_vec());
             }
             result.push(point.to_vec());
-        } else {
-            if inside(&point_s, split_value, axis, side) {
-                let intersection = compute_intersection(point_s, point, split_value, axis);
-                result.push(intersection.to_vec());
-            }
+        } else if inside(&point_s, split_value, axis, side) {
+            let intersection = compute_intersection(point_s, point, split_value, axis);
+            result.push(intersection.to_vec());
         }
         point_s = point;
     }
@@ -72,46 +65,41 @@ fn clip_polygon(
     }
 
     if result.len() >= 4 {
-        let mut wraped_result = Vec::new();
-        wraped_result.push(result);
-        Ok(wraped_result)
+        Ok(vec![result])
     } else {
         Err("Inconsistant size : The Polygon need to has 4 points or more.".to_string())
     }
 }
 
 /// Safe way to unwrap the coordinates from the GeoJSON format.
-pub fn unwrap_coordinates(value: &Vec<Value>) -> Vec<Vec<Vec<f64>>> {
+pub fn unwrap_coordinates(value: &[Value]) -> Vec<Vec<Vec<f64>>> {
     value
-        .into_iter()
-        .map(|value1| {
+        .iter()
+        .flat_map(|value1| {
             if let Value::Array(vec1) = value1 {
                 Ok(vec1
-                    .into_iter()
-                    .map(|value2| {
+                    .iter()
+                    .flat_map(|value2| {
                         if let Value::Array(vec2) = value2 {
                             Ok(vec2
-                                .into_iter()
-                                .map(|value3| {
+                                .iter()
+                                .flat_map(|value3| {
                                     if let Value::Number(nb) = value3 {
                                         nb.as_f64().ok_or(())
                                     } else {
                                         Err(())
                                     }
                                 })
-                                .flatten()
                                 .collect::<Vec<f64>>())
                         } else {
                             Err(())
                         }
                     })
-                    .flatten()
                     .collect::<Vec<Vec<f64>>>())
             } else {
                 Err(())
             }
         })
-        .flatten()
         .collect::<Vec<Vec<Vec<f64>>>>()
 }
 
@@ -122,13 +110,13 @@ fn min_max_coordinate(coordinates: &Vec<Vec<f64>>) -> Result<(f64, f64, f64, f64
     let mut min_y = f64::INFINITY;
     let mut max_y = f64::NEG_INFINITY;
 
-    if coordinates.len() < 1 {
+    if coordinates.is_empty() {
         return Err("Inconsistant coordinates : Empty vector.".to_string());
     }
 
     for point in coordinates {
         let x = *point
-            .get(0)
+            .first()
             .ok_or("Inconsistant coordinate : Empty point.")?;
 
         let y = *point
@@ -172,7 +160,7 @@ pub fn split_geometry(geometry: &Value) -> Result<(Value, Value), String> {
     let coordinates = unwrap_coordinates(coordinates);
 
     let exterior = coordinates
-        .get(0)
+        .first()
         .ok_or("Inconsistant geometry : Empty coordinates.")?;
 
     let (min_x, max_x, min_y, max_y) = min_max_coordinate(exterior)?;

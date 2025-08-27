@@ -120,7 +120,7 @@ async fn process_feature(
     let mut mutations: Vec<Mutation> = Vec::new();
     let mut classes: Vec<Classes> = Vec::new();
 
-    while buffer.len() > 0 {
+    while !buffer.is_empty() {
         let api_response = api_post(
             "mutation/search",
             api_key,
@@ -149,7 +149,7 @@ async fn process_feature(
             (Err(message), false) => {
                 error!("{} - {}", feature_id, message);
                 if message.contains("402") || message.contains("501") {
-                    let _ = sleep(Duration::from_secs(60));
+                    sleep(Duration::from_secs(60)).await;
                     failed_retry = true;
                 } else if regex_error.is_match(&message) {
                     let geometry =
@@ -193,7 +193,7 @@ async fn process_feature(
     let mutations_path = folder_path.join(format!("mutations_{}.parquet", feature_id));
     let classes_path = folder_path.join(format!("classes_{}.parquet", feature_id));
 
-    if mutations.len() > 0 && classes.len() > 0 {
+    if !mutations.is_empty() && !classes.is_empty() {
         ParquetData::write_to_parquet(&mutations, &mutations_path)
             .map_err(|e| error!("Failed to save mutations : {:?}", e))?;
 
@@ -210,7 +210,7 @@ async fn process_feature(
 async fn process_features(
     features: Vec<Map<String, Value>>,
     id_generator: &IdGenerator,
-    api_key: &String,
+    api_key: &str,
     headers: &HeaderMap,
     dpt: usize,
     regex_error: &Regex,
@@ -226,7 +226,7 @@ async fn process_features(
             .map_err(|e| error!("{}", e))?;
 
         let id_generator_clone = id_generator.clone();
-        let api_key_clone = api_key.clone();
+        let api_key_clone = api_key.to_owned();
         let headers_clone = headers.clone();
         let regex_error_clone = regex_error.clone();
 
@@ -255,7 +255,7 @@ async fn process_features(
             .await;
             drop(permit);
 
-            if let Err(_) = result {
+            if result.is_err() {
                 error!("Failed to process the feature {} of dpt {}", index, dpt);
             }
         }));
@@ -273,7 +273,7 @@ fn set_up(
     let target_folder = PathBuf::from(TARGET_FOLDER);
 
     if !fs::exists(&target_folder).unwrap_or(false) {
-        let _ = fs::create_dir_all(&target_folder)
+        fs::create_dir_all(&target_folder)
             .map_err(|e| format!("Failed to create the folder {:?} : {}", target_folder, e))?;
     }
 
@@ -316,17 +316,16 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                     .as_array()
                     .ok_or("Failed to get the Array from the 'features' Value.")?
                     .iter()
-                    .map(|v| {
+                    .flat_map(|v| {
                         if let Value::Object(map) = v {
                             Ok(map.clone())
                         } else {
                             Err(())
                         }
                     })
-                    .flatten()
                     .collect::<Vec<Map<String, Value>>>();
 
-                if let Err(_) = process_features(
+                if process_features(
                     features,
                     &id_generator,
                     &api_key,
@@ -335,6 +334,7 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                     &regex_error,
                 )
                 .await
+                .is_err()
                 {
                     error!(
                         "Failed to process the features of the departement : {}",

@@ -99,7 +99,7 @@ impl ParquetData for Mutation {
 
             btq_vec.push(mutation.adresse.btq.clone());
             voie_vec.push(mutation.adresse.voie.clone());
-            novoie_vec.push(mutation.adresse.novoie.clone());
+            novoie_vec.push(mutation.adresse.novoie);
             codvoie_vec.push(mutation.adresse.codvoie.clone());
             commune_vec.push(mutation.adresse.commune.clone());
             typvoie_vec.push(mutation.adresse.typvoie.clone());
