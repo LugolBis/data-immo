@@ -194,12 +194,26 @@ async fn process_feature(
 async fn process_features(
     features: Vec<Map<String, Value>>,
     id_generator: &IdGenerator,
-    api_key: &str,
+    api_key: &String,
     headers: &HeaderMap,
     dpt: usize,
     regex_error: &Regex,
 ) -> Result<(), ()> {
+    let semaphore = Arc::new(Semaphore::new(100));
+    let mut tasks = Vec::new();
+
     for index in 0..features.len() {
+        let permit = semaphore
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|e| error!("{}", e))?;
+        
+        let id_generator_clone = id_generator.clone();
+        let api_key_clone = api_key.clone();
+        let headers_clone = headers.clone();
+        let regex_error_clone = regex_error.clone();
+
         let geometry = features
             .get(index)
             .ok_or(())
@@ -213,27 +227,26 @@ async fn process_features(
 
         let feature_id = format!("{}{}", dpt, index);
 
-        if let Ok(_) = process_feature(
-            &feature_id,
-            id_generator,
-            api_key,
-            headers,
-            data,
-            regex_error,
-        )
-        .await
-        {
-            info!(
-                "Successfully save the mutation from the dpt {} and feature {}",
-                dpt, index
-            );
-        } else {
-            error!(
-                "Failed to save the mutation from the dpt {} and feature {}",
-                dpt, index
-            );
-        };
+        tasks.push(tokio::spawn(async move {
+            let result = process_feature(
+                &feature_id,
+                &id_generator_clone,
+                &api_key_clone,
+                &headers_clone,
+                data,
+                &regex_error_clone,
+            )
+            .await;
+            drop(permit);
+            
+            if let Err(_) = result {
+                error!("Failed to process the feature {} of dpt {}", index, dpt);
+            }
+        }));
     }
+
+    let _ = join_all(tasks).await;
+
     Ok(())
 }
 
@@ -272,26 +285,12 @@ fn set_up(
 pub async fn main(folder_path: &str) -> Result<String, String> {
     let (entries, api_key, headers, regex_error, id_generator) = set_up(folder_path)?;
 
-    let semaphore = Arc::new(Semaphore::new(100));
-
-    let mut tasks = Vec::new();
-
     let mut dpt = 1usize;
     for entry in entries {
         let path = entry.path();
 
         if path.is_file() {
             if let Ok(Value::Object(map)) = get_department(path.clone()) {
-                let permit = semaphore
-                    .clone()
-                    .acquire_owned()
-                    .await
-                    .map_err(|e| format!("{}", e))?;
-                let id_generator_clone = id_generator.clone();
-                let api_key_clone = api_key.clone();
-                let headers_clone = headers.clone();
-                let regex_error_clone = regex_error.clone();
-
                 let features = map
                     .get("features")
                     .ok_or(format!(
@@ -311,19 +310,21 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
                     .flatten()
                     .collect::<Vec<Map<String, Value>>>();
 
-                tasks.push(tokio::spawn(async move {
-                    let result = process_features(
-                        features,
-                        &id_generator_clone,
-                        &api_key_clone,
-                        &headers_clone,
-                        dpt,
-                        &regex_error_clone,
-                    )
-                    .await;
-                    drop(permit);
-                    result
-                }));
+                if let Err(_) = process_features(
+                    features,
+                    &id_generator,
+                    &api_key,
+                    &headers,
+                    dpt,
+                    &regex_error,
+                )
+                .await
+                {
+                    error!(
+                        "Failed to process the features of the departement : {}",
+                        dpt
+                    );
+                }
 
                 dpt += 1;
             }
@@ -331,8 +332,6 @@ pub async fn main(folder_path: &str) -> Result<String, String> {
             info!("Skip the folder : {:?}", entry.path())
         }
     }
-
-    let _ = join_all(tasks).await;
 
     Ok("Successfully run the Data pipeline !".to_string())
 }
