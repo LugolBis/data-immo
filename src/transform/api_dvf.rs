@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use csv::Writer;
-use mylog::{error, warn};
+use mylog::error;
 use serde::Serialize;
 use serde_json::{self, Map, Value};
 
 use super::tables::{Classes, Mutation, SharedMutationProps};
-use crate::extract::{api_dvf::TARGET_FOLDER, utils::IdGenerator};
+use crate::extract::utils::IdGenerator;
 
 fn map_parcelles(
     parcelles: Vec<Map<String, Value>>,
@@ -187,7 +187,7 @@ fn map_properties(
     )
 }
 
-fn save_transformations(
+pub fn save_transformations(
     path: PathBuf,
     records: Vec<(impl Serialize + std::fmt::Debug)>,
 ) -> Result<(), ()> {
@@ -210,7 +210,8 @@ fn save_transformations(
 pub fn transform_api_data(
     data: String,
     id_generator: &IdGenerator,
-    feature_id: &str,
+    mutations: &mut Vec<Mutation>,
+    classes: &mut Vec<Classes>,
 ) -> Result<(), ()> {
     let value: Value = serde_json::from_str(&data).map_err(|e| {
         error!(
@@ -230,9 +231,6 @@ pub fn transform_api_data(
         .ok_or(())
         .map_err(|_| error!("Inconsistant value : Expected an Array<Value>"))?;
 
-    let mut mutations: Vec<Mutation> = Vec::new();
-    let mut classes: Vec<Classes> = Vec::new();
-
     for feature in features {
         let properties = feature
             .as_object()
@@ -249,18 +247,7 @@ pub fn transform_api_data(
                 error!("Inconsistant value : Expected a Value::Object<Map<String, Value>>")
             })?;
 
-        map_properties(properties, id_generator, &mut mutations, &mut classes)?;
-    }
-
-    let folder_path = PathBuf::from(TARGET_FOLDER);
-    let mutations_path = folder_path.join(format!("mutations_{}.csv", feature_id));
-    let classes_path = folder_path.join(format!("classes_{}.csv", feature_id));
-
-    if mutations.len() > 0 && classes.len() > 0 {
-        save_transformations(mutations_path, mutations)?;
-        save_transformations(classes_path, classes)?;
-    } else {
-        warn!("Incomplete values {}", feature_id)
+        map_properties(properties, id_generator, mutations, classes)?;
     }
 
     Ok(())

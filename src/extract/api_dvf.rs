@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use futures::future::join_all;
-use mylog::{error, info};
+use mylog::{error, info, warn};
 use regex::Regex;
 use reqwest::{Client, Response, header::HeaderMap};
 use serde::Serialize;
@@ -14,7 +14,8 @@ use tokio::time::{Duration, sleep};
 
 use super::geometry::split_geometry;
 use super::utils::IdGenerator;
-use crate::transform::api_dvf::transform_api_data;
+use crate::transform::api_dvf::{save_transformations, transform_api_data};
+use crate::transform::tables::{Classes, Mutation};
 
 const FILTERS: [(&str, &str); 3] = [
     ("valeurfonc[lte]", "100000000000000000"),
@@ -116,6 +117,9 @@ async fn process_feature(
     let mut buffer: Vec<Map<String, Value>> = Vec::new();
     buffer.push(data);
 
+    let mut mutations: Vec<Mutation> = Vec::new();
+    let mut classes: Vec<Classes> = Vec::new();
+
     while buffer.len() > 0 {
         let api_response = api_post(
             "mutation/search",
@@ -128,14 +132,18 @@ async fn process_feature(
 
         match (api_response, failed_retry) {
             (Ok(response), _) => {
-                let curent_feature_id = format!("{}{}", feature_id, success_count);
 
                 let content = response
                     .text()
                     .await
                     .map_err(|e| error!("Failed to extract the response text : {}", e))?;
 
-                let _ = transform_api_data(content, id_generator, &curent_feature_id);
+                let _ = transform_api_data(
+                    content,
+                    id_generator,
+                    &mut mutations,
+                    &mut classes,
+                );
 
                 let _ = buffer.pop();
                 success_count += 1;
@@ -188,7 +196,18 @@ async fn process_feature(
         }
     }
 
-    if success_count > 0 { Ok(()) } else { Err(()) }
+    let folder_path = PathBuf::from(TARGET_FOLDER);
+    let mutations_path = folder_path.join(format!("mutations_{}.csv", feature_id));
+    let classes_path = folder_path.join(format!("classes_{}.csv", feature_id));
+
+    if mutations.len() > 0 && classes.len() > 0 {
+        save_transformations(mutations_path, mutations)?;
+        save_transformations(classes_path, classes)?;
+        Ok(())
+    } else {
+        warn!("Incomplete values {}", feature_id);
+        Err(())
+    }
 }
 
 async fn process_features(
@@ -208,7 +227,7 @@ async fn process_features(
             .acquire_owned()
             .await
             .map_err(|e| error!("{}", e))?;
-        
+
         let id_generator_clone = id_generator.clone();
         let api_key_clone = api_key.clone();
         let headers_clone = headers.clone();
@@ -238,7 +257,7 @@ async fn process_features(
             )
             .await;
             drop(permit);
-            
+
             if let Err(_) = result {
                 error!("Failed to process the feature {} of dpt {}", index, dpt);
             }
