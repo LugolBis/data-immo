@@ -1,37 +1,19 @@
-version: '0.1'
+version: '3.2'
 services:
   dremio:
-    image: elestio/dremio:latest
-    hostname: dremio
-    environment:
-      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    image: dremio/dremio-oss
+    container_name: dremio
     ports:
-      - "9047:9047"
-      - "31010:31010"
-      - "32010:32010"
+      - "9047:9047"   # Interface web de Dremio
+      - "31010:31010" # Clients ODBC/JDBC
       - "45678:45678"
+      - "32010:32010"
     volumes:
-      - type: volume
-        source: dremio_data
-        target: /opt/dremio/data
-      - type: volume
-        source: dremio_lib
-        target: /var/lib/dremio
-      - type: bind
-        source: ./localFiles
-        target: /localFiles
-    networks:
-      - dremio_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9047"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      - dremio_data:/opt/dremio/data
+      - dremio_local:/opt/dremio/local
+      - ./data/DVF:/data/DVF
+    restart: unless-stopped
 
 volumes:
   dremio_data:
-  dremio_lib:
-
-networks:
-  dremio_network:
-    driver: bridge
+  dremio_local:
