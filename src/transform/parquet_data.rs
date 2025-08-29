@@ -120,9 +120,9 @@ impl ParquetData for Mutation {
         let voie_arr = Arc::new(StringArray::from_iter(voie_vec)) as ArrayRef;
         let novoie_arr = Arc::new(UInt64Array::from_iter(novoie_vec)) as ArrayRef;
         let codvoie_arr = Arc::new(StringArray::from_iter(codvoie_vec)) as ArrayRef;
-        let commune_arr = Arc::new(StringArray::from(commune_vec)) as ArrayRef;
+        let commune_arr = Arc::new(StringArray::from_iter(commune_vec)) as ArrayRef;
         let typvoie_arr = Arc::new(StringArray::from_iter(typvoie_vec)) as ArrayRef;
-        let codepostal_arr = Arc::new(StringArray::from(codepostal_vec)) as ArrayRef;
+        let codepostal_arr = Arc::new(StringArray::from_iter(codepostal_vec)) as ArrayRef;
         let valeur_fonciere_arr = Arc::new(Float64Array::from(valeur_fonciere_vec)) as ArrayRef;
         let vendu_arr = Arc::new(BooleanArray::from(vendu_vec)) as ArrayRef;
 

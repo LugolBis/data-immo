@@ -27,9 +27,9 @@ pub struct Adresse {
     pub voie: Option<String>,
     pub novoie: Option<u64>,
     pub codvoie: Option<String>,
-    pub commune: String,
+    pub commune: Option<String>,
     pub typvoie: Option<String>,
-    pub codepostal: String,
+    pub codepostal: Option<String>,
 }
 
 /// Represent the SQL table '***Classes***'
@@ -108,34 +108,14 @@ impl Adresse {
             .ok_or(())
             .map_err(|_| error!("Inconsistant value : Expected a Map<String, Value>"))?;
 
-        let commune = String::from(
-            adresse
-                .get("commune")
-                .ok_or(())
-                .map_err(|_| error!("Failed to get the value of the key 'commune'"))?
-                .as_str()
-                .ok_or(())
-                .map_err(|_| error!("Inconsistant value : Expecteed a Str"))?,
-        );
-
-        let codepostal = String::from(
-            adresse
-                .get("codepostal")
-                .ok_or(())
-                .map_err(|_| error!("Failed to get the value of the key 'codepostal'"))?
-                .as_str()
-                .ok_or(())
-                .map_err(|_| error!("Inconsistant value : Expecteed a Str"))?,
-        );
-
         Ok(Adresse {
             btq: unwrap_value(adresse.get("btq")),
             voie: unwrap_value(adresse.get("voie")),
             novoie: unwrap_value(adresse.get("novoie")).and_then(|s| s.parse::<u64>().ok()),
             codvoie: unwrap_value(adresse.get("codvoie")),
-            commune,
+            commune: unwrap_value(adresse.get("commune")),
             typvoie: unwrap_value(adresse.get("typvoie")),
-            codepostal,
+            codepostal: unwrap_value(adresse.get("codepostal")),
         })
     }
 }
