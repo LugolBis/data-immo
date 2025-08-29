@@ -9,7 +9,7 @@ data
 .env
 *.csv
 *.duckdb
-dbt_dremio/models
+dbt_immo/models
 
 **/*.rs.bk
 

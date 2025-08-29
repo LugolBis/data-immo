@@ -4,7 +4,7 @@ use std::{
 
 use mylog::error;
 
-const MODEL_FOLDER: &str = "dbt_dremio/models";
+const MODEL_FOLDER: &str = "dbt_immo/models";
 
 fn generate_view(files_path: Vec<String>, view_name: &str) -> Result<(), String> {
     let path = PathBuf::from(MODEL_FOLDER).join(view_name);
