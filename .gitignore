@@ -2,12 +2,14 @@
 # will have compiled files and executables
 debug
 /target
+
 logs
 tests
 data
 .env
 *.csv
 *.duckdb
+dbt_dremio/models
 
 **/*.rs.bk
 
