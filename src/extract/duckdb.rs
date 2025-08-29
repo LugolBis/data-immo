@@ -46,13 +46,12 @@ fn from_folder(
         .flatten()
         .collect::<Vec<DirEntry>>();
 
-    let mut target_folder: PathBuf;
+    let target_folder: PathBuf;
     if let Some(path) = folder_path.parent() {
         target_folder = path.to_path_buf();
     } else {
         target_folder = PathBuf::new();
     }
-    target_folder.push("cleaned");
 
     if !fs::exists(&target_folder).unwrap_or(false) {
         let _ = fs::create_dir(&target_folder);
