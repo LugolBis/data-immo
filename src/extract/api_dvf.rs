@@ -193,7 +193,7 @@ async fn process_feature(
     let mutations_path = folder_path.join(format!("mutations_{}.parquet", feature_id));
     let classes_path = folder_path.join(format!("classes_{}.parquet", feature_id));
 
-    if !mutations.is_empty() && !classes.is_empty() {
+    if !mutations.is_empty() {
         ParquetData::write_to_parquet(&mutations, &mutations_path)
             .map_err(|e| error!("Failed to save mutations : {:?}", e))?;
 
