@@ -14,20 +14,22 @@ const FILE_PATTERN: &str = "mutations";
 /// Create a new connection in memory or in the specified file
 fn new_connection(db_path: Option<&str>) -> Result<Connection, ()> {
     match db_path {
-        Some(db_path) => Connection::open(db_path).map_err(|e| error!("{}", e)),
+        Some(db_path) => {
+            if fs::exists(db_path).unwrap_or(true) {
+                let _ = fs::remove_file(db_path);
+            }
+            
+            Connection::open(db_path).map_err(|e| error!("{}", e))
+        },
         None => Connection::open_in_memory().map_err(|e| error!("{}", e)),
     }
 }
 
 fn insert_values(conn: &Connection, path: &str, table_name: &str) -> Result<(), ()> {
-    let mut stmt = conn
-        .prepare(&format!(
-            "INSERT INTO {} SELECT * FROM read_parquet('{}')",
-            table_name, path
-        ))
-        .map_err(|e| error!("{}", e))?;
-
-    stmt.execute([]).map_err(|e| error!("{}", e))?;
+    conn.execute(
+        &format!("INSERT INTO {} SELECT * FROM read_parquet('{}')",table_name, path),
+        []
+    ).map_err(|e| error!("{}", e))?;
 
     Ok(())
 }
@@ -68,26 +70,19 @@ fn from_folder(
             // Load data from Parquet files
             insert_values(conn, &mutations_src, "mutations")?;
             insert_values(conn, &classes_src, "classes")?;
-
-            // Transform data
-            function(conn)?;
-
-            let binding = target_folder.join(filename.as_ref());
-            let mutations_dest = binding.as_os_str().to_string_lossy();
-            let classes_dest = mutations_dest.replace("mutations", "classes");
-
-            // Export transformed data
-            export_to_parquet(conn, &mutations_dest, "mutations")?;
-            export_to_parquet(conn, &classes_dest, "classes")?;
-
-            fs::remove_file(&path)
-                .map_err(|e| error!("Failed to remove the file {:?} : {}", path, e))?;
-
-            let path = PathBuf::from(classes_src);
-            fs::remove_file(&path)
-                .map_err(|e| error!("Failed to remove the file {:?} : {}", path, e))?;
         }
     }
+
+    // Transform data
+    function(conn)?;
+
+    let biding = target_folder.join("mutations.parquet");
+    let mutations_dest = biding.as_os_str().to_string_lossy();
+    let classes_dest = mutations_dest.replace("mutations", "classes");
+
+    // Export transformed data
+    export_to_parquet(conn, &mutations_dest, "mutations")?;
+    export_to_parquet(conn, &classes_dest, "classes")?;
 
     Ok(())
 }

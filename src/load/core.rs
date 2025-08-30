@@ -1,7 +1,7 @@
 use super::dbt::{generate_views, run_command};
 use super::dremio::{launch_docker_compose, wait_service};
 
-const DBT_COMMANDS: [&str;2] = ["test", "run"];
+const DBT_COMMANDS: [&str;2] = ["run", "test"];
 
 pub fn main() -> Result<String, String> {
     generate_views("data/DVF")?;
