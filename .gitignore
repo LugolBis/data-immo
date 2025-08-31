@@ -9,7 +9,6 @@ data
 .env
 *.csv
 *.duckdb
-dbt_immo/models/*.sql
 !dbt_immo/macros/tests/
 
 **/*.rs.bk

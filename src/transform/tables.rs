@@ -25,7 +25,7 @@ pub struct SharedMutationProps {
 pub struct Adresse {
     pub btq: Option<String>,
     pub voie: Option<String>,
-    pub novoie: Option<u64>,
+    pub novoie: Option<String>,
     pub codvoie: Option<String>,
     pub commune: Option<String>,
     pub typvoie: Option<String>,
@@ -111,7 +111,7 @@ impl Adresse {
         Ok(Adresse {
             btq: unwrap_value(adresse.get("btq")),
             voie: unwrap_value(adresse.get("voie")),
-            novoie: unwrap_value(adresse.get("novoie")).and_then(|s| s.parse::<u64>().ok()),
+            novoie: unwrap_value(adresse.get("novoie")),
             codvoie: unwrap_value(adresse.get("codvoie")),
             commune: unwrap_value(adresse.get("commune")),
             typvoie: unwrap_value(adresse.get("typvoie")),

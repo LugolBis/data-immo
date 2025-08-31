@@ -99,7 +99,7 @@ impl ParquetData for Mutation {
 
             btq_vec.push(mutation.adresse.btq.clone());
             voie_vec.push(mutation.adresse.voie.clone());
-            novoie_vec.push(mutation.adresse.novoie);
+            novoie_vec.push(mutation.adresse.novoie.clone());
             codvoie_vec.push(mutation.adresse.codvoie.clone());
             commune_vec.push(mutation.adresse.commune.clone());
             typvoie_vec.push(mutation.adresse.typvoie.clone());
@@ -118,7 +118,7 @@ impl ParquetData for Mutation {
         let nature_arr = Arc::new(StringArray::from(nature_vec)) as ArrayRef;
         let btq_arr = Arc::new(StringArray::from_iter(btq_vec)) as ArrayRef;
         let voie_arr = Arc::new(StringArray::from_iter(voie_vec)) as ArrayRef;
-        let novoie_arr = Arc::new(UInt64Array::from_iter(novoie_vec)) as ArrayRef;
+        let novoie_arr = Arc::new(StringArray::from_iter(novoie_vec)) as ArrayRef;
         let codvoie_arr = Arc::new(StringArray::from_iter(codvoie_vec)) as ArrayRef;
         let commune_arr = Arc::new(StringArray::from_iter(commune_vec)) as ArrayRef;
         let typvoie_arr = Arc::new(StringArray::from_iter(typvoie_vec)) as ArrayRef;
@@ -157,7 +157,7 @@ impl ParquetData for Mutation {
             Field::new("nature", DataType::Utf8, true),
             Field::new("btq", DataType::Utf8, true),
             Field::new("voie", DataType::Utf8, true),
-            Field::new("novoie", DataType::UInt64, true),
+            Field::new("novoie", DataType::Utf8, true),
             Field::new("codvoie", DataType::Utf8, true),
             Field::new("commune", DataType::Utf8, true),
             Field::new("typvoie", DataType::Utf8, true),

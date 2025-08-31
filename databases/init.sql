@@ -15,7 +15,7 @@ CREATE TABLE Mutations (
 	nature VARCHAR,
 	btq VARCHAR,
 	voie VARCHAR,
-	novoie INTEGER,
+	novoie VARCHAR,
 	codvoie VARCHAR,
 	commune VARCHAR,
 	typvoie VARCHAR,
