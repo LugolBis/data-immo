@@ -1,0 +1,25 @@
+version: 1
+
+models:
+  - name: mutations
+    columns:
+      - name: idg
+        data_tests:
+          - unique
+          - not_null
+
+      - name: idpar
+        data_tests:
+          - not_null
+
+      - name: idmutation
+        data_tests:
+          - not_null
+
+      - name: vefa
+        data_tests:
+          - not_null
+
+      - name: codepostal&5
+        data_tests:
+          - text_length
