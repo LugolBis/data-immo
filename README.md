@@ -31,8 +31,12 @@ flowchart LR
         E
     end
     
-    subgraph DataWarehouse [LakeHouse]
+    subgraph LakeHouse [LakeHouse]
         F
+    end
+
+    subgraph Docker [Docker Container]
+        LakeHouse
     end
     
     style A fill:#000091,stroke:#ffffff,color:#ffffff,stroke-width:1px
@@ -41,6 +45,7 @@ flowchart LR
     style D fill:#fef242,stroke:#000000,color:#000000,stroke-width:1px
     style E fill:#fc7053,stroke:#000000,color:#000000,stroke-width:1px
     style F fill:#31d3db,stroke:#ffffff,color:#ffffff,stroke-width:1px
+    style Docker fill: #099cec
 ```
 
 ## 🚀 Features  
