@@ -8,11 +8,11 @@ The project is designed with a focus on **performance, reliability, and scalabil
 
 ```mermaid
 flowchart LR
-    A[**API** DVF+] -->|Extraction| B[**Rust**]
-    B -->|Transformation| C[**Rust**]
-    C -->|Loading| D[(**DuckDB**)]
-    D -->|Saving cleaned data| E{**dbt**}
-    E -->|Validation<br>& loading| F[(**Dremio**)]
+    A[API DVF+] -->|Extraction| B[Rust]
+    B -->|Transformation| C[Rust]
+    C -->|Loading| D[(DuckDB)]
+    D -->|Saving cleaned data| E{dbt}
+    E -->|Validation<br>& loading| F[(Dremio)]
 
     subgraph Extraction [Extract]
         A
