@@ -4,7 +4,7 @@
 
 The project is designed with a focus on **performance, reliability, and scalability**, leveraging modern data engineering tools and practices.
 
-## 🔍​ Schema of the pipeline
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -48,7 +48,7 @@ flowchart LR
     style Docker fill: #099cec
 ```
 
-## 🚀 Features  
+## Features  
 
 - **Data Extraction**  
   - Fetches real estate transaction data from the **DVF+ API**.  
@@ -62,14 +62,14 @@ flowchart LR
   - **dbt** is used to validate, test, and model the data.  
   - The cleaned and validated data is loaded into **Dremio**, enabling a Lakehouse architecture.  
 
-## 🛠️ Tech Stack  
+## Tech Stack  
 
 - **Rust** → Core language for API calls, transformations, and performance optimization.  
 - **DuckDB** → In-process SQL engine for fast transformations of optimized Parquet datasets.  
 - **dbt** → Data modeling, testing, and validation layer.  
 - **Dremio** → Lakehouse platform for analytics and querying.  
 
-## 📂 Pipeline Overview  
+## Pipeline Overview  
 
 1. **Extract**: Retrieve raw transaction data from DVF+ API.  
 2. **Stage**: Store raw data as Parquet.  
